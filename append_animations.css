@@ -1,0 +1,23 @@
+
+/* ── Added Simulator Animations ── */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(57, 255, 20, 0.7); border-color: var(--accent3); }
+  70% { box-shadow: 0 0 10px 10px rgba(57, 255, 20, 0); border-color: var(--accent3); }
+  100% { box-shadow: 0 0 0 0 rgba(57, 255, 20, 0); border-color: transparent; }
+}
+.pulse-anim {
+  animation: pulse 1s ease-out;
+  border: 1px solid var(--accent3) !important;
+  z-index: 10;
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(255, 56, 96, 0.7); border-color: var(--red); }
+  70% { box-shadow: 0 0 10px 10px rgba(255, 56, 96, 0); border-color: var(--red); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 56, 96, 0); border-color: transparent; }
+}
+.pulse-anim-red {
+  animation: pulse-red 1s ease-out;
+  border: 1px solid var(--red) !important;
+  z-index: 10;
+}
