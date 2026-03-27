@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MemOS — Memory Allocation Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav id="navbar">
+    <div class="nav-logo">MEM<span>OS</span></div>
+    <div class="nav-links">
+      <a href="#hero">Home</a>
+      <a href="#scene-firstfit">Algorithms</a>
+      <a href="#simulator">Simulator</a>
+      <a href="#theory">Theory</a>
+    </div>
+    <div class="nav-scroll-indicator">
+      <span id="scroll-pct">0%</span>
+    </div>
+  </nav>
+
+  <!-- CANVAS OVERLAY (Three.js renders here) -->
+  <canvas id="three-canvas"></canvas>
+
+  <!-- SCROLL CONTAINER -->
+  <div id="scroll-container">
+
+    <!-- SCENE 0: HERO -->
+    <section class="scene" id="hero">
+      <div class="scene-content hero-content">
+        <div class="hero-tag">OS Mini Project · 2025</div>
+        <h1 class="hero-title">
+          <span class="line">Memory</span>
+          <span class="line accent">Allocation</span>
+          <span class="line">Simulator</span>
+        </h1>
+        <p class="hero-sub">Scroll to fly through how your OS manages RAM — block by block, frame by frame.</p>
+        <div class="scroll-hint">
+          <span>scroll down</span>
+          <div class="scroll-arrow"></div>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-chip">200 KB Memory</div>
+        <div class="stat-chip">6 Algorithms</div>
+        <div class="stat-chip">Real-time Viz</div>
+      </div>
+    </section>
+
+    <!-- SCENE 1: FIRST FIT -->
+    <section class="scene" id="scene-firstfit">
+      <div class="scene-content">
+        <div class="scene-label">Algorithm 01</div>
+        <h2 class="scene-title">First Fit</h2>
+        <p class="scene-desc">Scans from the beginning. Places the process in the <em>first hole</em> large enough to fit. Fast — but causes early fragmentation.</p>
+        <div class="algo-visual" id="ff-visual"></div>
+        <div class="algo-tag good">✓ Fastest search</div>
+        <div class="algo-tag bad">✗ High external fragmentation</div>
+      </div>
+    </section>
+
+    <!-- SCENE 2: BEST FIT -->
+    <section class="scene" id="scene-bestfit">
+      <div class="scene-content">
+        <div class="scene-label">Algorithm 02</div>
+        <h2 class="scene-title">Best Fit</h2>
+        <p class="scene-desc">Searches the <em>entire list</em> and picks the smallest hole that fits. Minimizes wasted space — but leaves tiny unusable fragments.</p>
+        <div class="algo-visual" id="bf-visual"></div>
+        <div class="algo-tag good">✓ Least wasted space</div>
+        <div class="algo-tag bad">✗ Slowest — full scan every time</div>
+      </div>
+    </section>
+
+    <!-- SCENE 3: WORST FIT -->
+    <section class="scene" id="scene-worstfit">
+      <div class="scene-content">
+        <div class="scene-label">Algorithm 03</div>
+        <h2 class="scene-title">Worst Fit</h2>
+        <p class="scene-desc">Picks the <em>largest available hole</em>. Theory: leftover fragments are big enough to be useful. Reality: rarely works well.</p>
+        <div class="algo-visual" id="wf-visual"></div>
+        <div class="algo-tag good">✓ Large remainders</div>
+        <div class="algo-tag bad">✗ Wastes large free blocks</div>
+      </div>
+    </section>
+
+    <!-- SCENE 4: FRAGMENTATION -->
+    <section class="scene" id="scene-frag">
+      <div class="scene-content">
+        <div class="scene-label">Concept 04</div>
+        <h2 class="scene-title">Fragmentation</h2>
+        <p class="scene-desc">Over time, memory fills with <em>scattered holes</em>. Even if total free space is sufficient, no single hole is large enough — the system stalls.</p>
+        <div class="frag-demo" id="frag-demo"></div>
+        <div class="frag-stats">
+          <div class="fstat">
+            <span class="fstat-num" id="ext-frag">—</span>
+            <span class="fstat-label">External Frag</span>
+          </div>
+          <div class="fstat">
+            <span class="fstat-num" id="int-frag">—</span>
+            <span class="fstat-label">Internal Frag</span>
+          </div>
+          <div class="fstat">
+            <span class="fstat-num" id="holes-count">—</span>
+            <span class="fstat-label">Holes</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 5: PAGING -->
+    <section class="scene" id="scene-paging">
+      <div class="scene-content">
+        <div class="scene-label">Concept 05</div>
+        <h2 class="scene-title">Paging</h2>
+        <p class="scene-desc">Memory split into fixed-size <em>frames</em>. Processes split into equal <em>pages</em>. Pages map to any free frame — no external fragmentation.</p>
+        <div class="paging-grid" id="paging-grid"></div>
+        <div class="page-table-wrap">
+          <div class="pt-header">Page Table</div>
+          <div id="page-table-rows"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 6: SIMULATOR CTA -->
+    <section class="scene" id="scene-cta">
+      <div class="scene-content cta-content">
+        <div class="scene-label">Interactive</div>
+        <h2 class="scene-title">Try It Live</h2>
+        <p class="scene-desc">Allocate processes, watch the memory bar update in real time. Compare algorithms side by side.</p>
+        <a href="#simulator" class="cta-btn">Open Simulator →</a>
+      </div>
+    </section>
+
+  </div><!-- end scroll-container -->
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- SIMULATOR SECTION (below scroll experience) -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section id="simulator">
+    <div class="sim-header">
+      <h2>Interactive Simulator</h2>
+      <p>Allocate and deallocate processes. Watch memory update live.</p>
+    </div>
+
+    <div class="sim-body">
+
+      <!-- Session Management -->
+      <div class="sim-controls" style="justify-content:space-between; border-color:var(--accent2); background:rgba(255,107,53,0.02);">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div id="backend-status" title="Connecting..." style="width:12px;height:12px;border-radius:50%;background:var(--yellow);box-shadow:0 0 8px var(--yellow);transition:all 0.3s ease;"></div>
+          <span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text);letter-spacing:1px;">API: <span id="backend-status-text">WAITING</span></span>
+        </div>
+        <div style="display:flex; gap:16px; align-items:center;">
+          <select id="session-select" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 14px;font-family:var(--font-mono);font-size:0.8rem;border-radius:2px;outline:none;">
+            <option value="">-- Load Session --</option>
+          </select>
+          <button onclick="window.sessionAPI.loadSession()" style="padding:10px 16px;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:1px;">LOAD</button>
+          <button onclick="window.sessionAPI.saveSessionPrompt()" style="padding:10px 22px;background:var(--accent2);color:#000;border:none;border-radius:2px;cursor:pointer;font-weight:bold;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:1px;">SAVE SESSION</button>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="sim-controls">
+        <div class="ctrl-group">
+          <label>Process Name</label>
+          <input type="text" id="proc-name" value="P1" maxlength="4" />
+        </div>
+        <div class="ctrl-group">
+          <label>Size (KB)</label>
+          <input type="number" id="proc-size" value="30" min="1" max="199" />
+        </div>
+        <div class="ctrl-group">
+          <label>Algorithm</label>
+          <select id="algo-select">
+            <option value="first-fit">First Fit</option>
+            <option value="best-fit">Best Fit</option>
+            <option value="worst-fit">Worst Fit</option>
+            <option value="next-fit">Next Fit</option>
+          </select>
+        </div>
+        <button id="allocate-btn" onclick="allocate()">Allocate</button>
+        <button id="compact-btn" onclick="compact()">Compact Memory</button>
+        <button id="reset-btn" onclick="resetSim()">Reset</button>
+      </div>
+
+      <div class="sim-controls anim-panel" style="margin-top: -16px;">
+        <div class="ctrl-group" style="flex: 1;">
+          <label>Total Memory (<span id="mem-size-val">200</span> KB)</label>
+          <input type="range" id="mem-size-slider" min="50" max="1000" step="10" value="200" oninput="window.simAPI.updateMemorySize(this.value)" />
+        </div>
+        <div class="ctrl-group" style="flex-direction: row; align-items: center; gap: 8px;">
+          <button id="play-btn" class="ctrl-btn" onclick="window.simAPI.play()"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+          <button id="pause-btn" class="ctrl-btn" onclick="window.simAPI.pause()" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></button>
+          <button id="step-btn" class="ctrl-btn" onclick="window.simAPI.step()"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+        </div>
+        <div class="ctrl-group" style="flex: 1;">
+          <label>Anim Speed</label>
+          <input type="range" id="anim-speed" min="1" max="10" value="5" />
+        </div>
+      </div>
+
+      <!-- Memory Bar -->
+      <div class="mem-bar-wrap">
+        <div class="mem-bar-label">
+          <span>0 KB</span>
+          <span>Memory (200 KB)</span>
+          <span>200 KB</span>
+        </div>
+        <div id="mem-bar"></div>
+        <div id="mem-bar-legend"></div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="sim-stats">
+        <div class="sim-stat">
+          <span id="s-used">0 KB</span>
+          <label>Used</label>
+        </div>
+        <div class="sim-stat">
+          <span id="s-free">200 KB</span>
+          <label>Free</label>
+        </div>
+        <div class="sim-stat">
+          <span id="s-frag">0%</span>
+          <label>Ext. Frag</label>
+        </div>
+        <div class="sim-stat">
+          <span id="s-holes">1</span>
+          <label>Holes</label>
+        </div>
+        <div class="sim-stat">
+          <span id="s-procs">0</span>
+          <label>Processes</label>
+        </div>
+      </div>
+
+      <!-- Process Table -->
+      <div class="proc-table-wrap">
+        <table id="proc-table">
+          <thead>
+            <tr>
+              <th>Process</th>
+              <th>Start (KB)</th>
+              <th>Size (KB)</th>
+              <th>End (KB)</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="proc-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Log -->
+      <div class="sim-log-wrap">
+        <div class="log-header">Allocation Log</div>
+        <div id="sim-log"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- PAGING SIMULATOR -->
+  <section id="paging-simulator" style="position:relative; z-index:20; background:var(--bg2); border-top:1px solid var(--border); padding:80px 60px;">
+    <div class="sim-header">
+      <h2>Paging Simulator</h2>
+      <p>Allocate pages, inspect the page table, and translate logical to physical addresses.</p>
+    </div>
+    <div class="sim-body">
+      <div class="sim-controls">
+        <div class="ctrl-group">
+          <label>Memory (KB)</label>
+          <input type="number" id="pg-mem-size" value="200" min="10" step="10" />
+        </div>
+        <div class="ctrl-group">
+          <label>Frame Size (KB)</label>
+          <input type="number" id="pg-frame-size" value="10" min="1" />
+        </div>
+        <button onclick="window.pgAPI.examplePreset()" style="padding:10px 16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:1px;align-self:flex-end;">Preset</button>
+        <button onclick="window.pgAPI.clearAll()" style="padding:10px 16px;background:transparent;color:var(--red);border:1px solid var(--red);border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:1px;align-self:flex-end;">Clear All</button>
+        <button onclick="window.pgAPI.initPaging()" style="padding:10px 22px;background:transparent;color:var(--accent2);border:1px solid var(--accent2);border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:1px;align-self:flex-end;">Init Memory</button>
+      </div>
+
+      <div class="sim-controls anim-panel" style="margin-top:-16px;">
+        <div class="ctrl-group">
+          <label>Process Name</label>
+          <input type="text" id="pg-proc-name" value="P1" maxlength="4" />
+        </div>
+        <div class="ctrl-group">
+          <label>Pages Needed</label>
+          <input type="number" id="pg-proc-pages" value="4" min="1" />
+        </div>
+        <button onclick="window.pgAPI.allocate()" style="padding:10px 22px;background:var(--accent);color:#000;border:none;font-weight:bold;border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:1px;align-self:flex-end;">Allocate Pages</button>
+      </div>
+
+      <!-- Address Translation Demo -->
+      <div class="sim-controls anim-panel" style="margin-top:-16px; border-color:var(--accent3);">
+        <div class="ctrl-group"><label style="color:var(--accent3)">Translate Logical Addr</label></div>
+        <div class="ctrl-group"><label>Process</label>
+          <select id="pg-trans-proc" style="width:80px;"><option value="">---</option></select>
+        </div>
+        <div class="ctrl-group"><label>Page No</label><input type="number" id="pg-trans-p" value="0" min="0"/></div>
+        <div class="ctrl-group"><label>Offset</label><input type="number" id="pg-trans-d" value="5" min="0"/></div>
+        <button onclick="window.pgAPI.translate()" style="padding:10px 22px;background:transparent;color:var(--accent3);border:1px solid var(--accent3);border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:1px;align-self:flex-end;">Translate</button>
+        <div id="pg-trans-result" style="align-self:center; font-family:var(--font-mono); font-size:1.1rem; color:var(--text); margin-left:16px;">--</div>
+      </div>
+
+      <div style="display:flex; gap:24px; margin-bottom:24px; flex-wrap:wrap;">
+        <div style="flex:2; min-width:300px;">
+          <div class="mem-bar-label"><span>Physical Memory Frames</span><span id="pg-int-frag" style="color:var(--accent2);">Int. Frag: 0 KB</span></div>
+          <div class="paging-grid" id="pg-frame-grid" style="grid-template-columns: repeat(10, 1fr); margin-bottom:0;"></div>
+        </div>
+        <div style="flex:1; min-width:250px;">
+          <div class="page-table-wrap" style="height: 100%; display:flex; flex-direction:column;">
+            <div class="pt-header">Page Table</div>
+            <div id="pg-pt-rows" style="overflow-y:auto; flex:1; background:var(--bg);"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sim-log-wrap">
+        <div class="log-header">Paging Log</div>
+        <div id="pg-log" style="max-height:160px; overflow-y:auto; padding:8px 0; background:var(--bg);"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SEGMENTATION SIMULATOR -->
+  <section id="segmentation-simulator" style="position:relative; z-index:20; background:var(--bg2); border-top:1px solid var(--border); padding:80px 60px;">
+    <div class="sim-header">
+      <h2>Segmentation Simulator</h2>
+      <p>Allocate variable-size segments and test memory limits with hardware protection.</p>
+    </div>
+    <div class="sim-body">
+      <div class="sim-controls">
+        <div class="ctrl-group">
+          <label>Segment Name</label>
+          <input type="text" id="seg-name" value="Code" maxlength="8" />
+        </div>
+        <div class="ctrl-group">
+          <label>Limit (Size KB)</label>
+          <input type="number" id="seg-limit" value="50" min="1" />
+        </div>
+        <div class="ctrl-group" style="flex:1;">
+          <label>Base Address (optional, leave blank for auto)</label>
+          <input type="number" id="seg-base" placeholder="Auto" min="0" />
+        </div>
+        <button onclick="window.segAPI.examplePreset()" style="padding:10px 16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:1px;align-self:flex-end;">Preset</button>
+        <button onclick="window.segAPI.clearAll()" style="padding:10px 16px;background:transparent;color:var(--red);border:1px solid var(--red);border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:1px;align-self:flex-end;">Clear All</button>
+        <button onclick="window.segAPI.allocate()" style="padding:10px 22px;background:var(--accent);color:#000;border:none;font-weight:bold;border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:1px;align-self:flex-end;">Allocate Segment</button>
+      </div>
+
+      <!-- Address Translation Demo -->
+      <div class="sim-controls anim-panel" style="margin-top:-16px; border-color:var(--accent3);">
+        <div class="ctrl-group"><label style="color:var(--accent3)">Translate Logical Addr</label></div>
+        <div class="ctrl-group"><label>Segment No</label><input type="number" id="seg-trans-s" value="0" min="0"/></div>
+        <div class="ctrl-group"><label>Offset</label><input type="number" id="seg-trans-d" value="10" min="0"/></div>
+        <button onclick="window.segAPI.translate()" style="padding:10px 22px;background:transparent;color:var(--accent3);border:1px solid var(--accent3);border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:1px;align-self:flex-end;">Translate</button>
+        <div id="seg-trans-result" style="align-self:center; font-family:var(--font-mono); font-size:1.1rem; color:var(--text); margin-left:16px;">--</div>
+      </div>
+
+      <div class="mem-bar-wrap">
+        <div class="mem-bar-label">
+          <span>Physical Base 0</span>
+          <span id="seg-ext-frag" style="color:var(--accent2);">Ext. Frag: 0 Holes</span>
+          <span id="seg-max-addr">Max Addr</span>
+        </div>
+        <div id="seg-mem-bar" style="width:100%;height:56px;background:var(--bg);border:1px solid var(--border);border-radius:3px;position:relative;overflow:hidden;"></div>
+      </div>
+
+      <div class="proc-table-wrap">
+        <table id="proc-table">
+          <thead>
+            <tr><th>Seg #</th><th>Name</th><th>Base</th><th>Limit</th><th>Action</th></tr>
+          </thead>
+          <tbody id="seg-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="sim-log-wrap">
+        <div class="log-header">Segmentation Log</div>
+        <div id="seg-log" style="max-height:160px; overflow-y:auto; padding:8px 0; background:var(--bg);"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- THEORY SECTION -->
+  <section id="theory">
+    <div class="theory-header">
+      <h2>Algorithm Reference</h2>
+    </div>
+    <div class="theory-tabs" id="theory-tabs-container">
+      <div style="padding: 20px; color: var(--muted); font-family: var(--font-mono);">Loading content from backend...</div>
+    </div>
+    <div class="theory-content" id="theory-content-container">
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <span class="footer-logo">MEM<span>OS</span></span>
+      <span>Memory Allocation Simulator · OS Mini Project · VIT 2025-26</span>
+    </div>
+  </footer>
+
+  <!-- SCRIPTS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="three-scene.js"></script>
+  <script src="simulator.js"></script>
+  <script src="main.js"></script>
+  <script src="paging-seg.js"></script>
+
+</body>
+</html>
