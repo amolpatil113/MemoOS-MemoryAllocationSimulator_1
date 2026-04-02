@@ -3,6 +3,12 @@
 (function () {
   'use strict';
 
+  // Check for GSAP
+  if (typeof gsap === 'undefined') {
+    console.error('GSAP is not loaded! Animations will not work.');
+    alert('Error: GSAP library not loaded. Please check internet connection and refresh page.');
+  }
+
   let MEMORY_SIZE = 200; // KB
 
   // Process color palette (hex CSS)
@@ -86,37 +92,54 @@
   let animContext = null;
 
   function allocate() {
-    if (animContext) return; // Wait until current anim is done
+    try {
+      if (animContext) return; // Wait until current anim is done
 
-    const name = document.getElementById('proc-name').value.trim() || 'P?';
-    const size = parseInt(document.getElementById('proc-size').value);
-    const algo = document.getElementById('algo-select').value;
+      const nameEl = document.getElementById('proc-name');
+      const sizeEl = document.getElementById('proc-size');
+      const algoEl = document.getElementById('algo-select');
 
-    if (!size || size <= 0 || size >= MEMORY_SIZE) {
-      addLog(`✗ Invalid size: ${size} KB`, 'fail');
-      animateOverflow();
-      return;
+      if (!nameEl || !sizeEl || !algoEl) {
+        console.error('Missing form elements:', { nameEl: !!nameEl, sizeEl: !!sizeEl, algoEl: !!algoEl });
+        addLog(`✗ Error: Form elements not found in DOM`, 'fail');
+        return;
+      }
+
+      const name = nameEl.value.trim() || 'P?';
+      const size = parseInt(sizeEl.value);
+      const algo = algoEl.value;
+
+      console.log('Allocate called:', { name, size, algo });
+
+      if (!size || size <= 0 || size >= MEMORY_SIZE) {
+        addLog(`✗ Invalid size: ${size} KB`, 'fail');
+        animateOverflow();
+        return;
+      }
+
+      if (memory.some(s => !s.free && s.name === name)) {
+        addLog(`✗ Process "${name}" already exists.`, 'fail');
+        return;
+      }
+
+      const { idx, steps } = getAlgoSteps(algo, size);
+
+      // Save allocation context to apply after animation
+      animContext = { idx, size, name, algo };
+      animQueue = steps;
+      currentAnimStep = 0;
+
+      isPlaying = true;
+      isPaused = false;
+      document.getElementById('play-btn').disabled = true;
+      document.getElementById('pause-btn').disabled = false;
+      document.getElementById('step-btn').disabled = true;
+      
+      runAnimQueue();
+    } catch (err) {
+      console.error('Error in allocate():', err);
+      addLog(`✗ Error: ${err.message}`, 'fail');
     }
-
-    if (memory.some(s => !s.free && s.name === name)) {
-      addLog(`✗ Process "${name}" already exists.`, 'fail');
-      return;
-    }
-
-    const { idx, steps } = getAlgoSteps(algo, size);
-
-    // Save allocation context to apply after animation
-    animContext = { idx, size, name, algo };
-    animQueue = steps;
-    currentAnimStep = 0;
-
-    isPlaying = true;
-    isPaused = false;
-    document.getElementById('play-btn').disabled = true;
-    document.getElementById('pause-btn').disabled = false;
-    document.getElementById('step-btn').disabled = true;
-    
-    runAnimQueue();
   }
 
   function runAnimQueue() {
@@ -144,6 +167,12 @@
     const duration = Math.max(0.1, 1.2 - (speed * 0.1));
 
     let flashColor = step.success ? '#39ff14' : (step.checking ? '#ffd700' : '#ff3860');
+
+    if (typeof gsap === 'undefined') {
+      console.warn('GSAP not available, skipping animation');
+      onComplete();
+      return;
+    }
 
     gsap.to(target, {
       backgroundColor: flashColor,
@@ -204,6 +233,13 @@
 
   function animateOverflow() {
     const bar = document.getElementById('mem-bar');
+    if (!bar) return;
+    
+    if (typeof gsap === 'undefined') {
+      console.warn('GSAP not available, skipping overflow animation');
+      return;
+    }
+
     gsap.to(bar, {
       x: 10,
       duration: 0.1,
@@ -238,29 +274,42 @@
   }
 
   function compact() {
-    const procs = memory.filter(s => !s.free);
-    let cursor = 0;
-    const compacted = procs.map(s => {
-      const ns = { ...s, start: cursor };
-      cursor += s.size;
-      return ns;
-    });
-    const totalFree = MEMORY_SIZE - cursor;
-    if (totalFree > 0) compacted.push({ start: cursor, size: totalFree, free: true });
-    memory = compacted;
-    addLog(`⚡ Compaction complete. Free space consolidated: ${totalFree} KB @ ${cursor} KB`, 'info');
-    renderAll();
+    try {
+      const procs = memory.filter(s => !s.free);
+      let cursor = 0;
+      const compacted = procs.map(s => {
+        const ns = { ...s, start: cursor };
+        cursor += s.size;
+        return ns;
+      });
+      const totalFree = MEMORY_SIZE - cursor;
+      if (totalFree > 0) compacted.push({ start: cursor, size: totalFree, free: true });
+      memory = compacted;
+      addLog(`⚡ Compaction complete. Free space consolidated: ${totalFree} KB @ ${cursor} KB`, 'info');
+      renderAll();
+    } catch (err) {
+      console.error('Error in compact():', err);
+      addLog(`✗ Error in compact: ${err.message}`, 'fail');
+    }
   }
 
   function resetSim() {
-    memory = [{ start: 0, size: MEMORY_SIZE, free: true }];
-    nextFitPointer = 0;
-    colorIndex = 0;
-    document.getElementById('proc-name').value = 'P1';
-    document.getElementById('proc-size').value = '30';
-    document.getElementById('sim-log').innerHTML = '';
-    addLog('System reset. 200 KB available.', 'info');
-    renderAll();
+    try {
+      memory = [{ start: 0, size: MEMORY_SIZE, free: true }];
+      nextFitPointer = 0;
+      colorIndex = 0;
+      const procNameEl = document.getElementById('proc-name');
+      const procSizeEl = document.getElementById('proc-size');
+      if (procNameEl) procNameEl.value = 'P1';
+      if (procSizeEl) procSizeEl.value = '30';
+      const logEl = document.getElementById('sim-log');
+      if (logEl) logEl.innerHTML = '';
+      addLog('System reset. 200 KB available.', 'info');
+      renderAll();
+    } catch (err) {
+      console.error('Error in resetSim():', err);
+      addLog(`✗ Error in reset: ${err.message}`, 'fail');
+    }
   }
 
   // ── Render ─────────────────────────────────────────────────────
@@ -346,13 +395,22 @@
   // ── Log ────────────────────────────────────────────────────────
 
   function addLog(msg, type = 'info') {
-    const log = document.getElementById('sim-log');
-    const ts = new Date().toLocaleTimeString('en-IN', { hour12: false });
-    const div = document.createElement('div');
-    div.className = `log-entry ${type}`;
-    div.textContent = `[${ts}] ${msg}`;
-    log.insertBefore(div, log.firstChild);
-    if (log.children.length > 50) log.removeChild(log.lastChild);
+    try {
+      const log = document.getElementById('sim-log');
+      if (!log) {
+        console.error('Log element not found in DOM');
+        return;
+      }
+      const ts = new Date().toLocaleTimeString('en-IN', { hour12: false });
+      const div = document.createElement('div');
+      div.className = `log-entry ${type}`;
+      div.textContent = `[${ts}] ${msg}`;
+      log.insertBefore(div, log.firstChild);
+      if (log.children.length > 50) log.removeChild(log.lastChild);
+      console.log(`[${type}] ${msg}`);
+    } catch (err) {
+      console.error('Error in addLog():', err);
+    }
   }
 
   // ── GSAP UI & Dynamic Memory Handlers ────────────────────────────
@@ -414,8 +472,18 @@
 
   // Init
   document.addEventListener('DOMContentLoaded', () => {
-    renderAll();
-    addLog('Memory initialized. 200 KB available. Choose an algorithm and allocate.', 'info');
+    try {
+      console.log('DOMContentLoaded: Initializing memory simulator');
+      renderAll();
+      addLog('Memory initialized. 200 KB available. Choose an algorithm and allocate.', 'info');
+      console.log('Memory simulator initialization complete');
+    } catch (err) {
+      console.error('Error during DOMContentLoaded init:', err);
+      const logEl = document.getElementById('sim-log');
+      if (logEl) {
+        logEl.innerHTML += `<div class="log-entry fail">[INIT ERROR] ${err.message}</div>`;
+      }
+    }
   });
 
 })();
