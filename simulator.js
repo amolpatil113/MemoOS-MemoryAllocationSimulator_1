@@ -463,12 +463,140 @@
     });
   }
 
+  // ── Dynamic Configuration (for Practice Loader) ─────────────────
+
+  let processQueue = []; // Queue of processes to allocate automatically
+  let processQueueIndex = 0;
+
+  function resetSimulatorState(memoryBlocks, processesArray, algorithm) {
+    try {
+      if (!memoryBlocks || memoryBlocks.length === 0) {
+        throw new Error('Memory blocks array is empty');
+      }
+
+      // Parse memory blocks: can be a single total, or array of individual blocks
+      let initialMemory = [];
+      if (typeof memoryBlocks[0] === 'number') {
+        // If it's an array of block sizes, create individual free segments
+        let currentStart = 0;
+        initialMemory = memoryBlocks.map(size => {
+          const seg = { start: currentStart, size, free: true };
+          currentStart += size;
+          return seg;
+        });
+      }
+
+      // Calculate new total memory
+      MEMORY_SIZE = memoryBlocks.reduce((a, b) => a + b, 0);
+
+      // Reset simulator state
+      memory = initialMemory.length > 0 ? initialMemory : [{ start: 0, size: MEMORY_SIZE, free: true }];
+      nextFitPointer = 0;
+      colorIndex = 0;
+      processQueue = processesArray || [];
+      processQueueIndex = 0;
+      animContext = null;
+      animQueue = [];
+      currentAnimStep = 0;
+      isPlaying = false;
+      isPaused = false;
+
+      // Update UI
+      const memSizeVal = document.getElementById('mem-size-val');
+      const memSizeSlider = document.getElementById('mem-size-slider');
+      if (memSizeVal) memSizeVal.textContent = MEMORY_SIZE;
+      if (memSizeSlider) {
+        memSizeSlider.value = MEMORY_SIZE;
+        memSizeSlider.max = MEMORY_SIZE * 2;
+      }
+
+      const procNameEl = document.getElementById('proc-name');
+      const procSizeEl = document.getElementById('proc-size');
+      const algoSelect = document.getElementById('algo-select');
+
+      if (procNameEl) procNameEl.value = 'P1';
+      if (procSizeEl) procSizeEl.value = processQueue.length > 0 ? processQueue[0] : '30';
+      if (algoSelect) algoSelect.value = algorithm || 'first-fit';
+
+      // Clear log and render
+      const logEl = document.getElementById('sim-log');
+      if (logEl) logEl.innerHTML = '';
+
+      addLog(`📋 Loaded custom problem: ${memoryBlocks.length} blocks (${MEMORY_SIZE} KB total), ${processesArray ? processesArray.length : 0} processes`, 'info');
+      if (memoryBlocks.length <= 6) {
+        addLog(`Memory: [${memoryBlocks.join(', ')}] KB`, 'info');
+      }
+      if (processesArray && processesArray.length <= 8) {
+        addLog(`Processes: [${processesArray.join(', ')}] KB`, 'info');
+      }
+
+      renderAll();
+      return true;
+    } catch (err) {
+      console.error('Error in resetSimulatorState:', err);
+      addLog(`✗ Error loading configuration: ${err.message}`, 'fail');
+      return false;
+    }
+  }
+
+  function allocateNextProcess() {
+    if (!processQueue || processQueueIndex >= processQueue.length) {
+      addLog('✓ All processes allocated!', 'success');
+      return false;
+    }
+
+    const size = processQueue[processQueueIndex];
+    const processName = `P${processQueueIndex + 1}`;
+    const algo = document.getElementById('algo-select').value;
+
+    const nameEl = document.getElementById('proc-name');
+    const sizeEl = document.getElementById('proc-size');
+
+    if (nameEl) nameEl.value = processName;
+    if (sizeEl) sizeEl.value = size;
+
+    // Execute allocation
+    allocate();
+    processQueueIndex++;
+
+    return true;
+  }
+
+  function showProcessAllocationSummary() {
+    const procs = memory.filter(s => !s.free);
+    const unallocated = processQueue.slice(processQueueIndex);
+
+    let summary = '📊 Allocation Summary:\n';
+    summary += `Allocated: ${procs.length}/${processQueue.length} processes\n`;
+    procs.forEach(p => {
+      summary += `  ${p.name}: ${p.size} KB @ ${p.start}-${p.start + p.size} KB\n`;
+    });
+
+    if (unallocated.length > 0) {
+      summary += `\nUnallocated: ${unallocated.join(', ')} KB`;
+    }
+
+    addLog(summary, 'info');
+  }
+
   // ── Expose globally ────────────────────────────────────────────
 
   window.allocate = allocate;
   window.compact = compact;
   window.resetSim = resetSim;
-  window.simAPI = { deallocate, addLog, updateMemorySize, play: playAnim, pause: pauseAnim, step: stepAnim };
+  window.allocateNextProcess = allocateNextProcess;
+  window.showProcessAllocationSummary = showProcessAllocationSummary;
+  window.simAPI = { 
+    deallocate, 
+    addLog, 
+    updateMemorySize, 
+    play: playAnim, 
+    pause: pauseAnim, 
+    step: stepAnim,
+    resetSimulatorState,
+    allocateNextProcess,
+    showProcessAllocationSummary
+  };
 
   // Init
   document.addEventListener('DOMContentLoaded', () => {

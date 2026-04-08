@@ -11,6 +11,7 @@ MemOS is a full-stack web application designed to simulate operating system memo
 
 - **Scroll-Driven 3D Memory Grid**: Powered by Three.js featuring 6 animated educational scenes.
 - **Contiguous Allocation Simulator**: Interactive implementation of First Fit, Best Fit, Worst Fit, and Next Fit algorithms.
+- **⭐ Custom Problem Loader**: Load custom memory blocks and processes to simulate exam problems.
 - **Interactive Paging Simulator**: Real-time address translation and visual page table management.
 - **Interactive Segmentation Simulator**: Segment table configuration with protection fault detection.
 - **Real-Time Analytics**: Live memory bar, fragmentation statistics, and step-by-step allocation logging.
@@ -37,8 +38,11 @@ memory-sim/
 ├── append_animations.css
 ├── three-scene.js
 ├── simulator.js
+├── practice.js                 # NEW: Custom problem loader & validation
 ├── paging-seg.js
 ├── main.js
+├── PRACTICE_GUIDE.md          # NEW: Comprehensive usage guide
+├── QUICK_START.md             # NEW: Quick reference guide
 └── README.md
 ```
 
@@ -93,6 +97,30 @@ Open `index.html` (in the root `memory-sim` folder) directly in your browser, or
 Simply scroll down the initial landing page to navigate through the 3D educational scenes. The Three.js visuals will automatically transition to match the current memory concept being explained.
 
 ### Memory Simulator
+
+#### ⭐ NEW: Custom Problem Loader
+Load custom memory allocation problems directly into the simulator:
+
+1. **Enter Memory Blocks**: Comma-separated values (e.g., `200,400,600,500`)
+2. **Enter Process Sizes**: Comma-separated values (e.g., `357,210,468,491`)
+3. **Select Algorithm**: Choose from First Fit, Best Fit, Worst Fit, or Next Fit
+4. **Click "Load Problem"**: Initializes the simulator with your configuration
+
+**Features:**
+- Input validation with helpful error messages
+- Pre-loaded sample exam problems for quick learning
+- Real-time problem statistics (utilization, block count, etc.)
+- Algorithm explanations appear automatically
+- Full step-by-step visualization with animation controls
+
+**Example:**
+```
+Memory Blocks: 200,400,600,500,300,250
+Processes:    357,210,468,491
+Algorithm:    First Fit
+```
+
+#### Manual Allocation
 - **Allocate**: Enter a process size and click "Allocate" to place it in memory using the selected algorithm.
 - **Free**: Select a block and free it up to reclaim contiguous segments.
 - **Compact**: Use the compaction feature to shift contiguous memory blocks and merge adjoining free space.
